@@ -3,9 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider  = "mysql"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -17,6 +16,7 @@ model User {
   address       String
   rewardPoints  Int      @default(0)
   role          String   @default("user") // "user" or "partner"
+  qrisImageUrl  String?
   createdAt     DateTime @default(now())
 
   partner           Partner?

@@ -1,20 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   ScanLine,
-  Tag,
   ShoppingBag,
+  ShoppingCart,
   Store,
   LogOut,
   Leaf,
   Menu,
   X,
   Bell,
-  Scissors
+  Scissors,
+  Settings
 } from "lucide-react";
 
 export default function DashboardLayout({
@@ -26,6 +27,16 @@ export default function DashboardLayout({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [notifCount, setNotifCount] = useState(0);
+  const [cartCount, setCartCount] = useState(0);
+
+  const updateCartCount = useCallback(() => {
+    try {
+      const cart = JSON.parse(localStorage.getItem("wearwise_cart") || "[]");
+      setCartCount(cart.length);
+    } catch {
+      setCartCount(0);
+    }
+  }, []);
 
   useEffect(() => {
     // Check both 'user' and 'partner_user' for backward compatibility during transition
@@ -33,13 +44,22 @@ export default function DashboardLayout({
     if (userStr) {
       const u = JSON.parse(userStr);
       setUser(u);
-      // Fetch pending notification count
-      fetch(`/api/notifications?buyerId=${u.id}`)
-        .then((r) => r.json())
-        .then((d) => { if (d.success) setNotifCount(d.notifications.length); })
-        .catch(() => { });
+      // Fetch pending notification count (both buyer + seller)
+      Promise.all([
+        fetch(`/api/notifications?buyerId=${u.id}`).then(r => r.json()).catch(() => ({ success: false })),
+        fetch(`/api/notifications?sellerId=${u.id}`).then(r => r.json()).catch(() => ({ success: false })),
+      ]).then(([buyerData, sellerData]) => {
+        const buyerCount = buyerData.success ? buyerData.notifications.length : 0;
+        const sellerCount = sellerData.success ? sellerData.notifications.length : 0;
+        setNotifCount(buyerCount + sellerCount);
+      });
     }
-  }, []);
+
+    // Cart count
+    updateCartCount();
+    window.addEventListener("cart-updated", updateCartCount);
+    return () => window.removeEventListener("cart-updated", updateCartCount);
+  }, [updateCartCount]);
 
   const isPartner = user?.role === "partner";
   const navItems = isPartner
@@ -51,8 +71,10 @@ export default function DashboardLayout({
       { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, badge: 0 },
       { name: "Scan", href: "/dashboard/scan", icon: ScanLine, badge: 0 },
       { name: "Market", href: "/dashboard/market", icon: ShoppingBag, badge: 0 },
+      { name: "Keranjang", href: "/dashboard/cart", icon: ShoppingCart, badge: cartCount },
       { name: "My Wardrobe", href: "/dashboard/my-market", icon: Scissors, badge: 0 },
-      { name: "Notifikasi", href: "/dashboard/notifications", icon: Bell, badge: notifCount }
+      { name: "Notifikasi", href: "/dashboard/notifications", icon: Bell, badge: notifCount },
+      { name: "Pengaturan", href: "/dashboard/settings", icon: Settings, badge: 0 },
     ];
 
   const handleLogout = () => {
