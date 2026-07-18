@@ -10,12 +10,12 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await req.json();
-    const { action, buyerId } = body; // action: "verify" | "reject"
+    const { action, sellerId } = body; // action: "verify" | "reject", now seller verifies
 
     const tx = await prisma.saleTransaction.findUnique({ where: { id } });
     if (!tx) return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
-    if (tx.buyerId !== buyerId)
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    if (tx.sellerId !== sellerId)
+      return NextResponse.json({ error: "Unauthorized — only seller can verify" }, { status: 403 });
     if (tx.status !== "pending_verification")
       return NextResponse.json({ error: "Transaction already processed" }, { status: 400 });
 
